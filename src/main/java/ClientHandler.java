@@ -16,11 +16,12 @@ public class ClientHandler {
 
       int message_size = input.readInt(); // 4 bytes
       input.readShort();       // 2 bytes - requestApiKey
-      input.readShort();   // 2 bytes - requestApiVersion
-      int correlationId = input.readInt();           // 4 bytes
+      short requestApiVersion = input.readShort();   // 2 bytes - requestApiVersion
+      int correlationId = input.readInt();  // 4 bytes
 
-      output.writeInt(4);
+      output.writeInt(6);
       output.writeInt(correlationId);
+      output.writeShort(35); //error code
       output.flush();
     } catch (IOException e) {
       throw new RuntimeException(e);
