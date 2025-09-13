@@ -13,18 +13,21 @@ public class Main {
     try {
       serverSocket = new ServerSocket(port);
       serverSocket.setReuseAddress(true);
-      // Wait for connection from client.
-      clientSocket = serverSocket.accept();
-      new ClientHandler(clientSocket).processClient();
+      while(true) {
+        // Client connection received
+        clientSocket = serverSocket.accept();
+        new Thread(new ClientHandler(clientSocket)).start();
+      }
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
     } finally {
-      try {
-        if (clientSocket != null) {
-          clientSocket.close();
+      if (serverSocket != null && !serverSocket.isClosed()) {
+        try {
+          serverSocket.close();
+          System.out.println("Kakfa Server Closed.");
+        } catch (IOException e) {
+          System.out.println("Failed to close server socket: " + e.getMessage());
         }
-      } catch (IOException e) {
-        System.out.println("IOException: " + e.getMessage());
       }
     }
   }

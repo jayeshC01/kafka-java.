@@ -1,24 +1,22 @@
 import models.APIVersionRequestV4;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 
-public class ClientHandler {
+public class ClientHandler implements Runnable {
   private final Socket clientSocket;
 
   ClientHandler(Socket clientSocket) {
     this.clientSocket = clientSocket;
   }
 
-  public void processClient() {
+  @Override
+  public void run() {
     try {
       DataInputStream input = new DataInputStream(clientSocket.getInputStream());
       DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
-      while(true) {
+      while (true) {
         APIVersionRequestV4 request = deserializeV4Request(input);
 
         short errorCode = 35;
@@ -28,9 +26,19 @@ public class ClientHandler {
 
         sendV4RequestResponse(output, request, errorCode);
       }
+    } catch (EOFException e) {
+      System.out.println("Client connection closed");
     } catch (IOException e) {
-      System.out.printf(e.getMessage());
+      System.out.println(e.getMessage());
       throw new RuntimeException(e);
+    } finally {
+      try {
+        if (clientSocket != null) {
+          clientSocket.close();
+        }
+      } catch (IOException e) {
+        System.out.println("IOException: " + e.getMessage());
+      }
     }
   }
 
@@ -57,28 +65,28 @@ public class ClientHandler {
     return requestV4;
   }
 
-    private void sendV4RequestResponse(DataOutputStream output, APIVersionRequestV4 request, short errorCode) throws IOException {
-      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-      DataOutputStream payload  = new DataOutputStream(buffer);
+  private void sendV4RequestResponse(DataOutputStream output, APIVersionRequestV4 request, short errorCode) throws IOException {
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    DataOutputStream payload = new DataOutputStream(buffer);
 
-      payload.writeInt(request.getCorrelationId());
-      // Response body v4
-      payload.writeShort(errorCode); // errorCode
-      payload.write(2);  // Array Length
-      // Element 1
-      payload.writeShort(request.getApiKey()); // API key
-      payload.writeShort(0); // min version
-      payload.writeShort(4); // max version
-      payload.write(0); // tag buffer
-      //Element ends
-      payload.writeInt(0); // throttle time
-      payload.write(0); // tag buffer
+    payload.writeInt(request.getCorrelationId());
+    // Response body v4
+    payload.writeShort(errorCode); // errorCode
+    payload.write(2);  // Array Length
+    // Element 1
+    payload.writeShort(request.getApiKey()); // API key
+    payload.writeShort(0); // min version
+    payload.writeShort(4); // max version
+    payload.write(0); // tag buffer
+    //Element ends
+    payload.writeInt(0); // throttle time
+    payload.write(0); // tag buffer
 
-      //Writing the output to socket output stream
-      output.writeInt(payload.size());
-      output.write(buffer.toByteArray());
+    //Writing the output to socket output stream
+    output.writeInt(payload.size());
+    output.write(buffer.toByteArray());
 
-      System.out.println("Response :\n"+ Arrays.toString(buffer.toByteArray()));
-      output.flush();
+    System.out.println("Response :\n" + Arrays.toString(buffer.toByteArray()));
+    output.flush();
   }
 }
